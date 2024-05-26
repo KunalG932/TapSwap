@@ -3,7 +3,7 @@
     "api_hash": "d8c8dab274f9a811814a6a96d044028e",
     "admin": 6239759268,
     "auto_upgrade": true,
-    "max_charge_level": 100,
-    "max_energy_level": 100,
-    "max_tap_level": 100
+    "max_charge_level": 20,
+    "max_energy_level": 20,
+    "max_tap_level": 20
 }
