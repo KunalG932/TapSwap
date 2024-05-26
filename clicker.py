@@ -9,15 +9,19 @@ import sys
 
 # -----------
 
-with open('config.json') as f:
+import json
+
+with open('config.json', 'r') as f:
     data = json.load(f)
-    api_id = data['api_id']
-    api_hash = data['api_hash']
-    admin = data['admin']
-    auto_upgrade = data['auto_upgrade']
-    max_charge_level = data['max_charge_level']
-    max_energy_level = data['max_energy_level']
-    max_tap_level = data['max_tap_level']
+
+api_id = data['api_id']
+api_hash = data['api_hash']
+admin = data['admin']
+auto_upgrade = data['auto_upgrade']
+max_charge_level = data['max_charge_level']
+max_energy_level = data['max_energy_level']
+max_tap_level = data['max_tap_level']
+
 
 
 db = {
