@@ -445,35 +445,38 @@ async def answer(event):
         return int(hours), int(minutes)
 
     if text == '/ping':
-        await _sendMessage('👽')
+        await _sendMessage('👽 **Pong!**')
 
     elif text.startswith('/click '):
         stats = text.split('/click ')[1]
         if stats not in ['off', 'on']:
-            await _sendMessage('❌ Bad Command!')
+            await _sendMessage('❌ **Invalid command!** Use `/click on` or `/click off`.')
             return
         
         db['click'] = stats
         if stats == 'on':
-            await _sendMessage('✅ Mining Started!')
+            await _sendMessage('✅ **Mining Started!**')
         else:
-            await _sendMessage('💤 Mining turned off!')
+            await _sendMessage('💤 **Mining turned off!**')
 
     elif text == '/balance':
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
-        await _sendMessage(f'🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`')
+        await _sendMessage(f'🟣 **Balance:** `{balance}`\n\n💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`')
 
     elif text == '/url':
-        await _sendMessage(f"💡 WebApp URL: `{url}`")
+        await _sendMessage(f"💡 **WebApp URL:** `{url}`")
 
     elif text == '/stats':
         stats = tap_stats(auth)
         total_share_balance = stats['players']['earned'] - stats['players']['spent'] + stats['players']['reward']
-        await _sendMessage(f"""`⚡️ TAPSWAP ⚡️`\n\n
-💡 Total Share Balance: `{convert_big_number(total_share_balance)}`
-👆🏻 Total Touches: `{convert_big_number(stats['players']['taps'])}`
-💀 Total Players: `{convert_big_number(stats['accounts']['total'])}`
-☠️ Online Players: `{convert_big_number(stats['accounts']['online'])}`""")
+        await _sendMessage(f"""
+⚡️ **TAPSWAP Stats** ⚡️
+
+💡 **Total Share Balance:** `{convert_big_number(total_share_balance)}`
+👆🏻 **Total Touches:** `{convert_big_number(stats['players']['taps'])}`
+💀 **Total Players:** `{convert_big_number(stats['accounts']['total'])}`
+☠️ **Online Players:** `{convert_big_number(stats['accounts']['online'])}`
+---------------""")
 
     elif text == '/help':
         su = get_server_usage()
@@ -496,18 +499,19 @@ async def answer(event):
 🎚 **Memory Usage:** `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
 
 **Commands:**
-🟣 `/click on` - Start collecting TapSwaps
-🟣 `/click off` - Stop collecting TapSwaps
-🟣 `/ping` - Check if the robot is online
-🟣 `/help` - Display help menu
-🟣 `/balance` - Show current balance
-🟣 `/stop` - Stop the robot
-🟣 `/url` - WebApp URL
+- 🟣 `/click on` - Start collecting TapSwaps
+- 🟣 `/click off` - Stop collecting TapSwaps
+- 🟣 `/ping` - Check if the robot is online
+- 🟣 `/help` - Display help menu
+- 🟣 `/balance` - Show current balance
+- 🟣 `/stop` - Stop the robot
+- 🟣 `/url` - WebApp URL
 
-**Balance:** {balance}
+**Balance:** `{balance}`
 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`
 
 **Coded By:** @UnPuzzles | **Telegram:** [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
+_____________
 """)
 
         
