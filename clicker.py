@@ -427,7 +427,6 @@ def get_server_usage():
     }
 
 async def answer(event):
-async def answer(event):
     global db, nextMineTime, balance, url, START_TIME
     text = event.raw_text
     user_id = event.sender_id
