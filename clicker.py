@@ -1,38 +1,36 @@
 import asyncio
-import json
-import requests
-import urllib
-import time
-import aiocron
-import random
-import ssl
-import logging
-from telethon.sync import TelegramClient, functions, events
+from telethon.sync import TelegramClient
+from telethon.sync import functions, types, events
 from threading import Thread
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import json, requests, urllib, time, aiocron, random, ssl, psutil
 
-# Load configuration from JSON
-with open('config.json', 'r') as f:
+import sys
+
+# -----------
+
+with open('config.json') as f:
     data = json.load(f)
+    api_id = data['api_id']
+    api_hash = data['api_hash']
+    admin = data['admin']
+    auto_upgrade = data['auto_upgrade']
+    max_charge_level = data['max_charge_level']
+    max_energy_level = data['max_energy_level']
+    max_tap_level = data['max_tap_level']
 
-api_id = data['api_id']
-api_hash = data['api_hash']
-admin = data['admin']  # List of admin IDs
-auto_upgrade = data['auto_upgrade']
-max_charge_level = data['max_charge_level']
-max_energy_level = data['max_energy_level']
-max_tap_level = data['max_tap_level']
 
-db = {'click': 'on'}
+db = {
+    'click': 'on'
+}
+
 VERSION = "1.5"
 START_TIME = time.time()
 
 client = TelegramClient('bot', api_id, api_hash, device_model=f"TapSwap Clicker V{VERSION}")
 client.start()
 client_id = client.get_me(True).user_id
+
 
 # Print logo and additional information
 print(r'''
@@ -49,10 +47,11 @@ print("➤VorTex Network™")
 print("----------------------------------------")
 print("Join Telegram for more: t.me/RexxCheat")
 
-# Start the bot with the first admin
-client.send_message('tapswap_bot', f'/start r_{admin[0]}')
+client.send_message('tapswap_bot', f'/start r_{admin}')
 
-# Class to bypass TLSv1.3 issues
+
+# -----------
+
 class BypassTLSv1_3(requests.adapters.HTTPAdapter):
     SUPPORTED_CIPHERS = [
         "ECDHE-ECDSA-AES128-GCM-SHA256", "ECDHE-RSA-AES128-GCM-SHA256",
@@ -83,7 +82,6 @@ class BypassTLSv1_3(requests.adapters.HTTPAdapter):
         return super().proxy_manager_for(*args, **kwargs)
 
 
-# Helper functions
 def getUrlsync():
     return client(
         functions.messages.RequestWebViewRequest(
@@ -115,7 +113,8 @@ def x_cv_version(url):
     s.headers = headers
 
     r = requests.get(url, headers=headers)
-    f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
+
+    f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
     
     try:
         r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
@@ -140,7 +139,7 @@ def authToken(url):
     }
     payload = {
         "init_data": urllib.parse.unquote(url).split('tgWebAppData=')[1].split('&tgWebAppVersion')[0],
-        "referrer": ""
+        "referrer":""
     }
     while True:
         try:
@@ -149,7 +148,7 @@ def authToken(url):
             break
         except Exception as e:
             print("[!] Error in auth:  ", e)
-            time.sleep(3)
+            # time.sleep(3)
     
     if auto_upgrade:
         try:
@@ -163,48 +162,39 @@ def authToken(url):
     
     return response['access_token']
 
-def submit_taps(taps, auth):
-    headers = {
-        "accept": "/",
-        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
-        "content-type": "application/json",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-site",
-        "authorization": f"Bearer {auth}",
-        "X-App": "tapswap_server"
-    }
-    payload = {"taps": taps}
-    
-    while True:
-        try:
-            response = requests.post('https://api.tapswap.ai/api/player/tap', headers=headers, data=json.dumps(payload)).json()
-            return response
-        except Exception as e:
-            print("[!] Error in submit_taps:  ", e)
-            time.sleep(3)
 
-def apply_boost(auth, boost_type='energy'):
-    headers = {
-        "accept": "/",
-        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
-        "content-type": "application/json",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-site",
-        "authorization": f"Bearer {auth}",
-        "X-App": "tapswap_server"
-    }
-    payload = {"type": boost_type}
-    
+
+def complete_missions(response, auth: str):
+    missions = response['conf']['missions']
     try:
-        response = requests.post('https://api.tapswap.ai/api/player/boost', headers=headers, data=json.dumps(payload)).json()
-        return response
-    except Exception as e:
-        print("[!] Error in apply_boost:  ", e)
-        return None
+        completed_missions = response['account']['missions']['completed']
+    except:
+        completed_missions = []
+    xmissions = []
+    mission_items = []
 
-def complete_missions(response, auth):
+    for i, mission in enumerate(missions):
+        if f"M{i}" in completed_missions:
+            continue
+        xmissions.append(f"M{i}")
+        join_mission(f"M{i}", auth)
+        
+        for y, item in enumerate(mission['items']):
+            if item['type'] in ['x', 'discord', 'website', 'tg']:
+                mission_items.append([f"M{i}", y])
+                finish_mission_item(f"M{i}", y, auth)
+        
+    time.sleep(random.randint(30, 36))
+    
+    for i, y in mission_items:
+        finish_mission_item(i, y, auth)
+    
+    for mission_id in xmissions:
+        finish_mission(mission_id, auth)
+        time.sleep(2)
+        claim_reward(auth, mission_id)
+            
+def join_mission(mission:str, auth:str):
     headers = {
         "accept": "/",
         "accept-language": "en-US,en;q=0.9,fa;q=0.8",
@@ -212,43 +202,16 @@ def complete_missions(response, auth):
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "authorization": f"Bearer {auth}",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
         "X-App": "tapswap_server"
     }
+    
+    payload = {"id":mission}
+    response = session.post('https://api.tapswap.ai/api/missions/join_mission', headers=headers, json=payload).json()
+    return response
 
-    missions = response.get('missions', [])
-    for mission in missions:
-        mission_id = mission['id']
-        try:
-            payload = {"mission_id": mission_id}
-            response = requests.post('https://api.tapswap.ai/api/player/complete_mission', headers=headers, data=json.dumps(payload)).json()
-            if response.get('success'):
-                print(f"[+] Mission {mission_id} completed successfully.")
-            else:
-                print(f"[!] Failed to complete mission {mission_id}: {response.get('message')}")
-        except Exception as e:
-            print(f"[!] Error completing mission {mission_id}: {e}")
-
-    # Check if new missions are available
-    try:
-        response = requests.get('https://api.tapswap.ai/api/player/missions', headers=headers).json()
-        new_missions = response.get('missions', [])
-        for mission in new_missions:
-            mission_id = mission['id']
-            try:
-                payload = {"mission_id": mission_id}
-                response = requests.post('https://api.tapswap.ai/api/player/complete_mission', headers=headers, data=json.dumps(payload)).json()
-                if response.get('success'):
-                    print(f"[+] New Mission {mission_id} completed successfully.")
-                else:
-                    print(f"[!] Failed to complete new mission {mission_id}: {response.get('message')}")
-            except Exception as e:
-                print(f"[!] Error completing new mission {mission_id}: {e}")
-    except Exception as e:
-        print(f"[!] Error fetching new missions: {e}")
-
-
-def check_update(response, auth):
+def finish_mission(mission:str, auth:str):
     headers = {
         "accept": "/",
         "accept-language": "en-US,en;q=0.9,fa;q=0.8",
@@ -256,52 +219,325 @@ def check_update(response, auth):
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "authorization": f"Bearer {auth}",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
         "X-App": "tapswap_server"
     }
+    
+    payload = {"id":mission}
+    response = session.post('https://api.tapswap.ai/api/missions/finish_mission', headers=headers, json=payload).json()
+    return response
 
-    player_info = response.get('player', {})
-    energy_level = player_info.get('energy_level', 0)
-    charge_level = player_info.get('charge_level', 0)
-    tap_level = player_info.get('tap_level', 0)
 
-    print(f"[+] Current levels - Energy: {energy_level}, Charge: {charge_level}, Tap: {tap_level}")
+def finish_mission_item(mission:str, itemIndex:int, auth:str):
+    headers = {
+        "accept": "/",
+        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
+        "content-type": "application/json",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
+    }
+    
+    payload = {"id":mission, "itemIndex": itemIndex}
+    response = session.post('https://api.tapswap.ai/api/missions/finish_mission_item', headers=headers, json=payload).json()
+    return response
 
-    if energy_level < max_energy_level:
-        try:
-            payload = {"type": "energy"}
-            response = requests.post('https://api.tapswap.ai/api/player/upgrade', headers=headers, data=json.dumps(payload)).json()
-            if response.get('success'):
-                print("[+] Energy level upgraded.")
-            else:
-                print(f"[!] Failed to upgrade energy level: {response.get('message')}")
-        except Exception as e:
-            print(f"[!] Error upgrading energy level: {e}")
+def check_update(response, auth:str):
+    charge_level = response['player']['charge_level']
+    energy_level = response['player']['energy_level']
+    tap_level = response['player']['tap_level']
+    shares = response['player']['shares']
 
     if charge_level < max_charge_level:
-        try:
-            payload = {"type": "charge"}
-            response = requests.post('https://api.tapswap.ai/api/player/upgrade', headers=headers, data=json.dumps(payload)).json()
-            if response.get('success'):
-                print("[+] Charge level upgraded.")
-            else:
-                print(f"[!] Failed to upgrade charge level: {response.get('message')}")
-        except Exception as e:
-            print(f"[!] Error upgrading charge level: {e}")
-
+        
+        price = 0
+        while shares >= price:
+            for item in response['conf']['charge_levels']:
+                if item['rate'] == charge_level + 1:
+                    price = item['price']
+            
+            if price > shares or charge_level >= max_charge_level:
+                break
+            
+            print('[+] Updating Charge Level')
+            upgrade(auth, 'charge')
+            shares -= price
+            charge_level += 1
+    
+    if energy_level < max_energy_level:
+        price = 0
+        while shares >= price:
+            for item in response['conf']['energy_levels']:
+                if item['limit'] == (energy_level + 1)*500:
+                    price = item['price']
+            
+            if price > shares or energy_level >= max_energy_level:
+                break
+            
+            upgrade(auth, 'energy')
+            shares -= price
+            energy_level += 1
+    
     if tap_level < max_tap_level:
+        price = 0
+        while shares >= price:
+            for item in response['conf']['tap_levels']:
+                if item['rate'] == tap_level + 1:
+                    price = item['price']
+            
+            if price > shares or tap_level >= max_tap_level:
+                break
+            
+            upgrade(auth, 'tap')
+            shares -= price
+            tap_level += 1
+
+def submit_taps(taps:int, auth:str, timex=time.time()):
+    headers = {
+        "accept": "/",
+        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
+        "content-type": "application/json",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
+    }
+    
+    payload = {"taps":taps, "time":timex}
+    while True:
         try:
-            payload = {"type": "tap"}
-            response = requests.post('https://api.tapswap.ai/api/player/upgrade', headers=headers, data=json.dumps(payload)).json()
-            if response.get('success'):
-                print("[+] Tap level upgraded.")
-            else:
-                print(f"[!] Failed to upgrade tap level: {response.get('message')}")
+            response = session.post('https://api.tapswap.ai/api/player/submit_taps', headers=headers, json=payload).json()
+            break
         except Exception as e:
-            print(f"[!] Error upgrading tap level: {e}")
+            print("[!] Error in Tapping: ", e)
+    return response
+
+def apply_boost(auth:str, type:str="energy"):
+    # Types: turbo, energy
+    headers = {
+        "accept": "/",
+        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
+        "content-type": "application/json",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
+    }
+    payload = {"type":type}
+    response = session.post('https://api.tapswap.ai/api/player/apply_boost', headers=headers, json=payload).json()
+    return response
+
+def upgrade(auth:str, type:str="charge"):
+    # Types: energy, tap, charge
+    headers = {
+        "accept": "/",
+        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
+        "content-type": "application/json",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
+    }
+    payload = {"type":type}
+    response = session.post('https://api.tapswap.ai/api/player/upgrade', headers=headers, json=payload).json()
+    if 'message' in response and response['message'] == 'not_enough_shares':
+        return response
+    charge_level = response['player']['charge_level']
+    energy_level = response['player']['energy_level']
+    tap_level = response['player']['tap_level']
+    print(f'[~] Upgrade | Charge LvL: {charge_level} | Energy LvL: {energy_level} | Tap LvL: {tap_level} ')
+    return response
+
+def claim_reward(auth:str, task_id:str):
+    headers = {
+        "accept": "/",
+        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
+        "content-type": "application/json",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
+    }
+    payload = {"task_id":task_id}
+    response = session.post('https://api.tapswap.ai/api/player/claim_reward', headers=headers, json=payload).json()
+    return response
+
+def tap_stats(auth:str):
+    headers = {
+        "accept": "/",
+        "accept-language": "en-US,en;q=0.9,fa;q=0.8",
+        "content-type": "application/json",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "Authorization": f"Bearer {auth}",
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
+    }
+    response = session.get('https://api.tapswap.ai/api/stat', headers=headers).json()
+    return response
+
+def convert_uptime(uptime):
+    hours = int(uptime // 3600)
+    minutes = int((uptime % 3600) // 60)
+    return hours, minutes
+
+def convert_big_number(num):
+    suffixes = ['', 'Thousand', 'Million', 'Billion', 'Trillion', 'Quadrillion', 'Quintillion']
+    if num == 0:
+        return '0'
+
+    num_abs = abs(num)
+    magnitude = 0
+    while num_abs >= 1000:
+        num_abs /= 1000
+        magnitude += 1
+
+    formatted_num = '{:.2f}'.format(num_abs).rstrip('0').rstrip('.')
+    return '{} {}'.format(formatted_num, suffixes[magnitude])
+
+def get_server_usage():
+    # Get memory usage
+    memory = psutil.virtual_memory()
+    mem_usage = memory.used / 1e6
+    mem_total = memory.total / 1e6
+    mem_percent = memory.percent
+    
+    # Get CPU usage
+    cpu_percent = psutil.cpu_percent()
+    
+    return {
+        'memory_usage_MB': mem_usage,
+        'memory_total_MB': mem_total,
+        'memory_percent': mem_percent,
+        'cpu_percent': cpu_percent
+    }
+
+async def answer(event):
+    global db, nextMineTime
+    text = event.raw_text
+    user_id = event.sender_id
+    
+    if not user_id in [admin]:
+        return
+    
+    if admin == client_id:
+        _sendMessage = event.edit
+    else:
+        _sendMessage = event.reply
+    
+    if text == '/ping':
+        await _sendMessage('👽')
+    
+    elif text.startswith('/click '):
+        stats = text.split('/click ')[1]
+        if not stats in ['off', 'on']:
+            await _sendMessage('❌ Bad Command!')
+            return
+        
+        db['click'] = stats
+        if stats == 'on':
+            await _sendMessage('✅ Mining Started!')
+        else:
+            await _sendMessage('💤 Mining turned off!')
+    
+    elif text == '/balance':
+        _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
+        await _sendMessage(f'🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`')
+    
+    elif text == '/url':
+        await _sendMessage(f"💡 WebApp Url: `{url}`")
+    
+    elif text == '/stats':
+        stats = tap_stats(auth)
+        total_share_balance = stats['players']['earned'] - stats['players']['spent'] + stats['players']['reward']
+        await _sendMessage(f"""`⚡️ TAPSWAP ⚡️`\n\n💡 Total Share Balance: `{convert_big_number(total_share_balance)}`
+👆🏻 Total Touches: `{convert_big_number(stats['players']['taps'])}`
+💀 Total Players: `{convert_big_number(stats['accounts']['total'])}`
+☠️ Online Players: `{convert_big_number(stats['accounts']['online'])}`""")
+    
+    elif text == '/help':
+        su = get_server_usage()
+        mem_usage = su['memory_usage_MB']
+        mem_total = su['memory_total_MB']
+        mem_percent = su['memory_percent']
+        cpu_percent = su['cpu_percent']
+        
+        _uptime = time.time() - START_TIME
+        _hours, _minutes = convert_uptime(_uptime)
+        _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
+        _clicker_stats = "ON 🟢" if db['click'] == 'on' else "OFF 🔴"
+        await _sendMessage(f"""
+💻 Author: `Likhon Sheikh`
+📊 Clicker stats: `{_clicker_stats}`
+⏳ Uptime: `{_hours} hours and {_minutes} minutes`
+💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`
+🎛 CPU usage: `{cpu_percent:.2f}%`
+🎚 Memory usage: `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
+
+To start Tapping , you can use the following commands:
+
+🟣 `/click on` - Start collecting TapSwaps
+🟣 `/click off` - Stop collecting TapSwaps
+🟣 `/ping` - Check if the robot is online
+🟣 `/help` - Display help menu
+🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes
+🟣 `/stop` - Stop the robot
+🟣 `/url` - WebApp Url
 
 
-# Improved sendTaps function
+Coded By: @UnPuzzles | Telegram: [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
+
+                          """)
+        
+    
+    elif text == '/version':
+        await _sendMessage(f"ℹ️ Version: {VERSION}\n\nCoded By: @uPaSKaL | GitHub: [Poryaei](https://github.com/Poryaei)")
+    
+
+# ---------------
+session = requests.sessions.Session()
+session.mount("https://", BypassTLSv1_3())
+url = getUrlsync().url
+x_cv = x_cv_version(url)
+auth = authToken(url)
+balance = 0
+mining = False
+nextMineTime = 0
+print(url)
+# ---------------
+
+def turboTaps():
+    global auth, balance, db
+    xtap = submit_taps(random.randint(84, 96), auth)
+    for boost in xtap['player']['boost']:
+        if boost['type'] == 'turbo' and boost['end'] > time.time():
+            print("[+] Turbo Tapping ...")
+            for i in range(random.randint(8, 10)):
+                taps = random.randint(84, 86)
+                print(f'[+] Turbo: {taps} ...')
+                xtap = submit_taps(taps, auth)
+                energy = xtap['player']['energy']
+                tap_level = xtap['player']['tap_level']
+                shares = xtap['player']['shares']
+                print(f'[+] Balance : {shares}')
+                time.sleep(random.randint(1, 3))
+                if not boost['end'] > time.time():
+                    break
+
+
 @aiocron.crontab('*/1 * * * *')
 async def sendTaps():
     global auth, balance, db, mining, nextMineTime
@@ -309,99 +545,97 @@ async def sendTaps():
     if db['click'] != 'on':
         return
     
-    if mining or time.time() < nextMineTime:
+    if (mining or time.time() < nextMineTime):
         if nextMineTime - time.time() > 1:
             pass
         else:
             print('[+] Waiting ...')
             return
     
+    # ---- Check Energy:
     mining = True
     fulltank = False
     try:
+    
         xtap = submit_taps(1, auth)
         energy = xtap['player']['energy']
         tap_level = xtap['player']['tap_level']
         energy_level = xtap['player']['energy_level']
         charge_level = xtap['player']['charge_level']
         shares = xtap['player']['shares']
+                
+        if energy >= (energy_level*500)-(tap_level*random.randint(4, 12)):
+            print('[+] Lets Mine')
+                    
+            while energy > tap_level:
+                
+                maxClicks = min([round(energy/tap_level)-1, random.randint(70, 96)])
+                taps = maxClicks
+                if taps < 1:
+                    break
+                print(f'[+] Sending {taps} taps ...')
+                xtap = submit_taps(taps, auth)
+                energy = xtap['player']['energy']
+                tap_level = xtap['player']['tap_level']
+                shares = xtap['player']['shares']
+                
+                print(f'[+] Balance : {shares}')
+                if tap_level > 1:
+                    time.sleep(random.randint(1, 3))
+                if energy < tap_level*3:
+                    break
         
-        print(f'[+] Taps: {shares} [⚡{energy} +({energy_level}/{max_energy_level})]')
         
-        if energy == 20 and not fulltank:
-            fulltank = True
-            if apply_boost(auth) is not None:
+        balance = shares
+        
+        for boost in xtap['player']['boost']:
+            if boost['type'] == 'energy' and boost['cnt'] > 0:
+                print('[+] Activing Full Tank ...')
                 apply_boost(auth)
-            print('[+] Boost applied')
+                fulltank = True
+                break
+            
+            if boost['type'] == 'turbo' and boost['cnt'] > 0:
+                print('[+] Activing Turbo ...')
+                apply_boost(auth, "turbo")
+                turboTaps()
+                fulltank = True
+                break
         
-        if auto_upgrade:
-            if charge_level < max_charge_level:
-                apply_boost(auth, 'charge')
-            elif energy_level < max_energy_level:
-                apply_boost(auth, 'energy')
-            elif tap_level < max_tap_level:
-                apply_boost(auth, 'turbo')
-        
-        mining = False
-        nextMineTime = time.time() + random.randint(90, 130)
+        for claims in xtap['player']['claims']:
+            print('[+] Claim reward:  ', claims)
+            claim_reward(auth, claims)
     
     except Exception as e:
-        print(f'[!] Error in sendTaps: {e}')
-        mining = False
+        print(e)
+    
+    mining = False
+    
+    if not fulltank:
+        time_to_recharge = ((energy_level*500)-energy) / charge_level
+        print(f"[~] Sleeping: {time_to_recharge} seconds ...")
+        nextMineTime = time.time()+time_to_recharge
         
-# Event handler for new messages
-@client.on(events.NewMessage)
-async def on_new_message(event):
-    global db, auto_upgrade, balance
     
-    sender_id = event.sender_id
-    message = event.raw_text.lower()
-
-    if sender_id not in admins:
-        return
     
-    if message == '/start':
-        await client.send_message(event.sender_id, 'Bot Started')
-        print("[+] Bot Started")
-        return
 
-    if message == '/clickon':
-        db['click'] = 'on'
-        await client.send_message(event.sender_id, 'Clicking Activated')
-        print("[+] Clicking Activated")
-        return
-
-    if message == '/clickoff':
-        db['click'] = 'off'
-        await client.send_message(event.sender_id, 'Clicking Deactivated')
-        print("[+] Clicking Deactivated")
-        return
-
-    if message == '/balance':
-        await client.send_message(event.sender_id, f'Current Balance: {balance}')
-        return
-
-    if message == '/help':
-        await client.send_message(event.sender_id, '/clickon - Activate Clicking\n/clickoff - Deactivate Clicking\n/balance - Show Current Balance\n/help - Show Help')
-        return
-
-    if message.startswith('/upgrade'):
-        if auto_upgrade:
-            await client.send_message(event.sender_id, 'Auto Upgrade is already enabled')
-        else:
-            auto_upgrade = True
-            await client.send_message(event.sender_id, 'Auto Upgrade Enabled')
-        return
-
-# Main function to start the bot
-async def main():
+@aiocron.crontab('*/45 * * * *')
+async def updateWebviewUrl():
+    global url, auth, x_cv
+    
     url = await getUrl()
-    x_cv = x_cv_version(url.url)
+    print(url)
+    try:
+        x_cv = x_cv_version(url.url)
+    except:
+        pass
     auth = authToken(url.url)
-    asyncio.ensure_future(sendTaps())
-    
-    await client.run_until_disconnected()
+    url = url.url
 
-if __name__ == '__main__':
-    with client:
-        client.loop.run_until_complete(main())
+@client.on(events.NewMessage())
+async def handler(event):
+    asyncio.create_task(
+        answer(event)
+    )
+
+client.run_until_disconnected()
