@@ -328,24 +328,19 @@ async def sendTaps():
         
         print(f'[+] Taps: {shares} [⚡{energy} +({energy_level}/{max_energy_level})]')
         
-        if energy == 20 and fulltank == False:
+        if energy == 20 and not fulltank:
             fulltank = True
-            if apply_boost(auth) == None:
-                pass
-            else:
+            if apply_boost(auth) is not None:
                 apply_boost(auth)
             print('[+] Boost applied')
         
         if auto_upgrade:
             if charge_level < max_charge_level:
                 apply_boost(auth, 'charge')
-                break
-            if energy_level < max_energy_level:
+            elif energy_level < max_energy_level:
                 apply_boost(auth, 'energy')
-                break
-            if tap_level < max_tap_level:
+            elif tap_level < max_tap_level:
                 apply_boost(auth, 'turbo')
-                break
         
         mining = False
         nextMineTime = time.time() + random.randint(90, 130)
@@ -353,7 +348,7 @@ async def sendTaps():
     except Exception as e:
         print(f'[!] Error in sendTaps: {e}')
         mining = False
-
+        
 # Event handler for new messages
 @client.on(events.NewMessage)
 async def on_new_message(event):
