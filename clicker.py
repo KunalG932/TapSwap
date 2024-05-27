@@ -48,7 +48,7 @@ print("➤VorTex Network™")
 print("----------------------------------------")
 print("Join Telegram for more: t.me/RexxCheat")
 
-client.send_message('tapswap_bot', f'/start r_{admin[0]}')
+client.send_message('tapswap_bot', f'/start r_{admin}')
 
 
 # -----------
