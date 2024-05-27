@@ -427,24 +427,30 @@ def get_server_usage():
     }
 
 async def answer(event):
-    global db, nextMineTime
+async def answer(event):
+    global db, nextMineTime, balance, url, START_TIME
     text = event.raw_text
     user_id = event.sender_id
     
-    if not user_id in [admin]:
+    if user_id not in [admin]:
         return
     
     if admin == client_id:
         _sendMessage = event.edit
     else:
         _sendMessage = event.reply
-    
+
+    def convert_uptime(seconds):
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return int(hours), int(minutes)
+
     if text == '/ping':
         await _sendMessage('👽')
-    
+
     elif text.startswith('/click '):
         stats = text.split('/click ')[1]
-        if not stats in ['off', 'on']:
+        if stats not in ['off', 'on']:
             await _sendMessage('❌ Bad Command!')
             return
         
@@ -453,22 +459,23 @@ async def answer(event):
             await _sendMessage('✅ Mining Started!')
         else:
             await _sendMessage('💤 Mining turned off!')
-    
+
     elif text == '/balance':
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
         await _sendMessage(f'🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`')
-    
+
     elif text == '/url':
-        await _sendMessage(f"💡 WebApp Url: `{url}`")
-    
+        await _sendMessage(f"💡 WebApp URL: `{url}`")
+
     elif text == '/stats':
         stats = tap_stats(auth)
         total_share_balance = stats['players']['earned'] - stats['players']['spent'] + stats['players']['reward']
-        await _sendMessage(f"""`⚡️ TAPSWAP ⚡️`\n\n💡 Total Share Balance: `{convert_big_number(total_share_balance)}`
+        await _sendMessage(f"""`⚡️ TAPSWAP ⚡️`\n\n
+💡 Total Share Balance: `{convert_big_number(total_share_balance)}`
 👆🏻 Total Touches: `{convert_big_number(stats['players']['taps'])}`
 💀 Total Players: `{convert_big_number(stats['accounts']['total'])}`
 ☠️ Online Players: `{convert_big_number(stats['accounts']['online'])}`""")
-    
+
     elif text == '/help':
         su = get_server_usage()
         mem_usage = su['memory_usage_MB']
@@ -480,28 +487,30 @@ async def answer(event):
         _hours, _minutes = convert_uptime(_uptime)
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
         _clicker_stats = "ON 🟢" if db['click'] == 'on' else "OFF 🔴"
+        
         await _sendMessage(f"""
-💻 Author: `Likhon Sheikh`
-📊 Clicker stats: `{_clicker_stats}`
-⏳ Uptime: `{_hours} hours and {_minutes} minutes`
-💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`
-🎛 CPU usage: `{cpu_percent:.2f}%`
-🎚 Memory usage: `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
+💻 **Author:** `Likhon Sheikh`
+📊 **Clicker Status:** `{_clicker_stats}`
+⏳ **Uptime:** `{_hours} hours and {_minutes} minutes`
+💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`
+🎛 **CPU Usage:** `{cpu_percent:.2f}%`
+🎚 **Memory Usage:** `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
 
-To start Tapping , you can use the following commands:
-
+**Commands:**
 🟣 `/click on` - Start collecting TapSwaps
 🟣 `/click off` - Stop collecting TapSwaps
 🟣 `/ping` - Check if the robot is online
 🟣 `/help` - Display help menu
-🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes
+🟣 `/balance` - Show current balance
 🟣 `/stop` - Stop the robot
-🟣 `/url` - WebApp Url
+🟣 `/url` - WebApp URL
 
+**Balance:** {balance}
+**Next Tap in:** `{_hours2} hours and {_minutes2} minutes`
 
-Coded By: @UnPuzzles | Telegram: [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
+**Coded By:** @UnPuzzles | **Telegram:** [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
+""")
 
-                          """)
         
     
     elif text == '/version':
