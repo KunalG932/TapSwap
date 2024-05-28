@@ -113,19 +113,20 @@ def x_cv_version(url):
     s = requests.Session()
     s.headers = headers
 
-    r = requests.get(url, headers=headers)
-
-    f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
-    
     try:
-        r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
-        x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
-        print('[+] X-CV:  ', x_cv)
+        r = s.get(url, headers=headers)
+        if 'src="/assets/main' in r.text:
+            f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
+            r = s.get(f'https://app.tapswap.club/assets/{f_name}')
+            x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
+            print('[+] X-CV:  ', x_cv)
+        else:
+            raise ValueError("Expected substring not found in the HTML response")
     except Exception as e:
         print("[!] Error in X-CV:  ", e)
         x_cv = 1
     return x_cv
-
+    
 def authToken(url):
     global balance
     headers = {
