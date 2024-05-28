@@ -113,20 +113,18 @@ def x_cv_version(url):
     s = requests.Session()
     s.headers = headers
 
+    r = requests.get(url, headers=headers)
+
     try:
-        r = s.get(url, headers=headers)
-        if 'src="/assets/main' in r.text:
-            f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
-            r = s.get(f'https://app.tapswap.club/assets/{f_name}')
-            x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
-            print('[+] X-CV:  ', x_cv)
-        else:
-            raise ValueError("Expected substring not found in the HTML response")
+        f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
+        r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
+        x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
+        print('[+] X-CV:  ', x_cv)
     except Exception as e:
         print("[!] Error in X-CV:  ", e)
-        x_cv = 1
+        x_cv = '1'  # Make sure x_cv is a string
     return x_cv
-    
+
 def authToken(url):
     global balance
     headers = {
@@ -141,7 +139,7 @@ def authToken(url):
     }
     payload = {
         "init_data": urllib.parse.unquote(url).split('tgWebAppData=')[1].split('&tgWebAppVersion')[0],
-        "referrer":""
+        "referrer": ""
     }
     while True:
         try:
@@ -151,7 +149,7 @@ def authToken(url):
         except Exception as e:
             print("[!] Error in auth:  ", e)
             # time.sleep(3)
-    
+
     if auto_upgrade:
         try:
             Thread(target=complete_missions, args=(response, response['access_token'],)).start()
@@ -161,10 +159,8 @@ def authToken(url):
             check_update(response, response['access_token'])
         except Exception as e:
             print(e)
-    
+
     return response['access_token']
-
-
 
 def complete_missions(response, auth: str):
     missions = response['conf']['missions']
