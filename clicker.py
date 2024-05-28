@@ -7,18 +7,16 @@ import json, requests, urllib, time, aiocron, random, ssl, psutil
 
 import sys
 
-# -----------
-
 with open('config.json', 'r') as f:
     data = json.load(f)
 
-api_id = data['api_id']
-api_hash = data['api_hash']
-admin = data['admin']
-auto_upgrade = data['auto_upgrade']
-max_charge_level = data['max_charge_level']
-max_energy_level = data['max_energy_level']
-max_tap_level = data['max_tap_level']
+api_id = data.get('api_id')
+api_hash = data.get('api_hash')
+admin = data.get('admin')
+auto_upgrade = data.get('auto_upgrade')
+max_charge_level = data.get('max_charge_level')
+max_energy_level = data.get('max_energy_level')
+max_tap_level = data.get('max_tap_level')
 
 
 db = {
@@ -110,28 +108,21 @@ def x_cv_version(url):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     }
 
+    s = requests.Session()
+    s.headers = headers
+
+    r = requests.get(url, headers=headers)
+
+    f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
+    
     try:
-        r = requests.get(url, headers=headers)
-        split_src = r.text.split('src="/assets/main')
-        if len(split_src) > 1:
-            f_name = "main" + split_src[1].split('"')[0]
-            r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
-            split_cv = r.text.split('api.headers.set("x-cv","')
-            if len(split_cv) > 1:
-                x_cv = split_cv[1].split('"')[0]
-                print('[+] X-CV:  ', x_cv)
-                return x_cv
-        print("[!] Error in X-CV: Required substring not found")
-        x_cv = '1'  # Default value or handle as needed
-    except IndexError:
-        print("[!] Error in X-CV:  list index out of range")
-        x_cv = '1'
+        r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
+        x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
+        print('[+] X-CV:  ', x_cv)
     except Exception as e:
-        print(f"[!] Error in X-CV:  {e}")
-        x_cv = '1'  
-
+        print("[!] Error in X-CV:  ", e)
+        x_cv = 1
     return x_cv
-
 
 def authToken(url):
     global balance
@@ -147,28 +138,29 @@ def authToken(url):
     }
     payload = {
         "init_data": urllib.parse.unquote(url).split('tgWebAppData=')[1].split('&tgWebAppVersion')[0],
-        "referrer": ""
+        "referrer":""
     }
     while True:
         try:
             response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload)).json()
-            if 'player' in response:
-                balance = response['player']['shares']
-                if auto_upgrade:
-                    try:
-                        Thread(target=complete_missions, args=(response, response['access_token'],)).start()
-                    except:
-                        pass
-                    try:
-                        check_update(response, response['access_token'])
-                    except Exception as e:
-                        print(e)
-                return response['access_token']
-            else:
-                print("[!] Error in auth: 'player' key missing in response")
+            balance = response['player']['shares']
+            break
         except Exception as e:
-            print(f"[!] Error in auth:  {e}")
-            time.sleep(3)
+            print("[!] Error in auth:  ", e)
+            # time.sleep(3)
+    
+    if auto_upgrade:
+        try:
+            Thread(target=complete_missions, args=(response, response['access_token'],)).start()
+        except:
+            pass
+        try:
+            check_update(response, response['access_token'])
+        except Exception as e:
+            print(e)
+    
+    return response['access_token']
+
 
 
 def complete_missions(response, auth: str):
@@ -433,57 +425,50 @@ def get_server_usage():
     }
 
 async def answer(event):
-    global db, nextMineTime, balance, url, START_TIME
+    global db, nextMineTime
     text = event.raw_text
     user_id = event.sender_id
     
-    if user_id not in [admin]:
+    if not user_id in [admin]:
         return
     
     if admin == client_id:
         _sendMessage = event.edit
     else:
         _sendMessage = event.reply
-
-    def convert_uptime(seconds):
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        return int(hours), int(minutes)
-
+    
     if text == '/ping':
-        await _sendMessage('👽 **Pong!**')
-
+        await _sendMessage('👽 Pong!')
+    
     elif text.startswith('/click '):
         stats = text.split('/click ')[1]
         if stats not in ['off', 'on']:
-            await _sendMessage('❌ **Invalid command!** Use `/click on` or `/click off`.')
+            await _sendMessage('❌ Bad Command!')
             return
         
         db['click'] = stats
         if stats == 'on':
-            await _sendMessage('✅ **Mining Started!**')
+            await _sendMessage('✅ Mining Started!')
         else:
-            await _sendMessage('💤 **Mining turned off!**')
-
+            await _sendMessage('💤 Mining Turned Off!')
+    
     elif text == '/balance':
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
-        await _sendMessage(f'🟣 **Balance:** `{balance}`\n\n💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`')
-
+        await _sendMessage(f'🟣 **Balance:** {balance}\n\n💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`')
+    
     elif text == '/url':
         await _sendMessage(f"💡 **WebApp URL:** `{url}`")
-
+    
     elif text == '/stats':
         stats = tap_stats(auth)
         total_share_balance = stats['players']['earned'] - stats['players']['spent'] + stats['players']['reward']
-        await _sendMessage(f"""
-⚡️ **TAPSWAP Stats** ⚡️
-
+        await _sendMessage(f"""⚡️ **TAPSWAP STATS** ⚡️
+        
 💡 **Total Share Balance:** `{convert_big_number(total_share_balance)}`
 👆🏻 **Total Touches:** `{convert_big_number(stats['players']['taps'])}`
 💀 **Total Players:** `{convert_big_number(stats['accounts']['total'])}`
-☠️ **Online Players:** `{convert_big_number(stats['accounts']['online'])}`
----------------""")
-
+☠️ **Online Players:** `{convert_big_number(stats['accounts']['online'])}`""")
+    
     elif text == '/help':
         su = get_server_usage()
         mem_usage = su['memory_usage_MB']
@@ -495,35 +480,55 @@ async def answer(event):
         _hours, _minutes = convert_uptime(_uptime)
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
         _clicker_stats = "ON 🟢" if db['click'] == 'on' else "OFF 🔴"
-        
         await _sendMessage(f"""
 💻 **Author:** `Likhon Sheikh`
-📊 **Clicker Status:** `{_clicker_stats}`
+📊 **Clicker Stats:** `{_clicker_stats}`
 ⏳ **Uptime:** `{_hours} hours and {_minutes} minutes`
 💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`
 🎛 **CPU Usage:** `{cpu_percent:.2f}%`
 🎚 **Memory Usage:** `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
 
 **Commands:**
-- 🟣 `/click on` - Start collecting TapSwaps
-- 🟣 `/click off` - Stop collecting TapSwaps
-- 🟣 `/ping` - Check if the robot is online
-- 🟣 `/help` - Display help menu
-- 🟣 `/balance` - Show current balance
-- 🟣 `/stop` - Stop the robot
-- 🟣 `/url` - WebApp URL
 
-**Balance:** `{balance}`
-**Next Tap in:** `{_hours2} hours and {_minutes2} minutes`
+🟣 `/click on` - Start collecting TapSwaps
+🟣 `/click off` - Stop collecting TapSwaps
+🟣 `/ping` - Check if the robot is online
+🟣 `/help` - Display help menu
+🟣 `/balance` - Check your balance
+🟣 `/stop` - Stop the robot
+🟣 `/url` - Get WebApp URL
+🟣 `/time` - Get the current server time
+🟣 `/status` - Get detailed system status
 
 **Coded By:** @UnPuzzles | **Telegram:** [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
-_____________
-""")
-
-        
+        """)
     
     elif text == '/version':
-        await _sendMessage(f"ℹ️ Version: {VERSION}\n\nCoded By: @uPaSKaL | GitHub: [Poryaei](https://github.com/Poryaei)")
+        await _sendMessage(f"ℹ️ **Version:** {VERSION}\n\n**Coded By:** @uPaSKaL | **GitHub:** [Poryaei](https://github.com/Poryaei)")
+
+    elif text == '/time':
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        await _sendMessage(f"🕒 **Current Server Time:** `{current_time} UTC`")
+    
+    elif text == '/status':
+        su = get_server_usage()
+        mem_usage = su['memory_usage_MB']
+        mem_total = su['memory_total_MB']
+        mem_percent = su['memory_percent']
+        cpu_percent = su['cpu_percent']
+        
+        disk_usage = su.get('disk_usage', 'N/A')
+        network_status = su.get('network_status', 'N/A')
+        
+        await _sendMessage(f"""
+📊 **System Status**
+
+🎛 **CPU Usage:** `{cpu_percent:.2f}%`
+🎚 **Memory Usage:** `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
+💽 **Disk Usage:** `{disk_usage}`
+🌐 **Network Status:** `{network_status}`
+        """)
+
     
 
 # ---------------
