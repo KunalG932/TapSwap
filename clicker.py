@@ -110,19 +110,19 @@ def x_cv_version(url):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     }
 
-    s = requests.Session()
-    s.headers = headers
-
-    r = requests.get(url, headers=headers)
-
     try:
+        r = requests.get(url, headers=headers)
         f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
         r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
         x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
         print('[+] X-CV:  ', x_cv)
+    except IndexError:
+        print("[!] Error in X-CV:  list index out of range")
+        x_cv = '1' g
     except Exception as e:
-        print("[!] Error in X-CV:  ", e)
-        x_cv = '1'  # Make sure x_cv is a string
+        print(f"[!] Error in X-CV:  {e}")
+        x_cv = '1'  
+    
     return x_cv
 
 def authToken(url):
@@ -144,23 +144,24 @@ def authToken(url):
     while True:
         try:
             response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload)).json()
-            balance = response['player']['shares']
-            break
+            if 'player' in response:
+                balance = response['player']['shares']
+                if auto_upgrade:
+                    try:
+                        Thread(target=complete_missions, args=(response, response['access_token'],)).start()
+                    except:
+                        pass
+                    try:
+                        check_update(response, response['access_token'])
+                    except Exception as e:
+                        print(e)
+                return response['access_token']
+            else:
+                print("[!] Error in auth: 'player' key missing in response")
         except Exception as e:
-            print("[!] Error in auth:  ", e)
-            # time.sleep(3)
+            print(f"[!] Error in auth:  {e}")
+            time.sleep(3)
 
-    if auto_upgrade:
-        try:
-            Thread(target=complete_missions, args=(response, response['access_token'],)).start()
-        except:
-            pass
-        try:
-            check_update(response, response['access_token'])
-        except Exception as e:
-            print(e)
-
-    return response['access_token']
 
 def complete_missions(response, auth: str):
     missions = response['conf']['missions']
