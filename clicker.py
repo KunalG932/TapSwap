@@ -112,18 +112,26 @@ def x_cv_version(url):
 
     try:
         r = requests.get(url, headers=headers)
-        f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
-        r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
-        x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
-        print('[+] X-CV:  ', x_cv)
+        split_src = r.text.split('src="/assets/main')
+        if len(split_src) > 1:
+            f_name = "main" + split_src[1].split('"')[0]
+            r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
+            split_cv = r.text.split('api.headers.set("x-cv","')
+            if len(split_cv) > 1:
+                x_cv = split_cv[1].split('"')[0]
+                print('[+] X-CV:  ', x_cv)
+                return x_cv
+        print("[!] Error in X-CV: Required substring not found")
+        x_cv = '1'  # Default value or handle as needed
     except IndexError:
         print("[!] Error in X-CV:  list index out of range")
-        x_cv = '1' 
+        x_cv = '1'
     except Exception as e:
         print(f"[!] Error in X-CV:  {e}")
         x_cv = '1'  
-    
+
     return x_cv
+
 
 def authToken(url):
     global balance
