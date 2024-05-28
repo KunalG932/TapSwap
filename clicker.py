@@ -118,7 +118,7 @@ def x_cv_version(url):
         print('[+] X-CV:  ', x_cv)
     except IndexError:
         print("[!] Error in X-CV:  list index out of range")
-        x_cv = '1' g
+        x_cv = '1' 
     except Exception as e:
         print(f"[!] Error in X-CV:  {e}")
         x_cv = '1'  
