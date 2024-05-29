@@ -141,6 +141,15 @@ def x_cv_version(url):
 
 
 
+import logging
+import requests
+import json
+import urllib.parse
+from threading import Thread
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def authToken(url, auto_upgrade=False):
     global balance
     
@@ -162,7 +171,13 @@ def authToken(url, auto_upgrade=False):
 
     try:
         response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload), timeout=10).json()
-        balance = response['player']['shares']
+        
+        if 'player' in response and 'shares' in response['player']:
+            balance = response['player']['shares']
+        else:
+            logger.error("Response does not contain player shares information")
+            return None
+        
     except requests.RequestException as e:
         logger.error(f"Error in auth request: {e}")
         return None
@@ -179,6 +194,7 @@ def authToken(url, auto_upgrade=False):
             logger.error(f"Error checking update: {e}")
     
     return response['access_token']
+
 
 
 def complete_missions(response, auth: str):
