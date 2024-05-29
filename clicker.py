@@ -77,18 +77,6 @@ class BypassTLSv1_3(requests.adapters.HTTPAdapter):
         kwargs["source_address"] = None
         return super().proxy_manager_for(*args, **kwargs)
 
-
-def getUrlsync():
-    return client(
-        functions.messages.RequestWebViewRequest(
-            peer='tapswap_bot',
-            bot='tapswap_bot',
-            platform='ios',
-            from_bot_menu=False,
-            url='https://app.tapswap.ai/',
-        )
-    )
-
 async def getUrl():
     return await client(
         functions.messages.RequestWebViewRequest(
@@ -202,7 +190,7 @@ def join_mission(mission:str, auth:str):
     }
     
     payload = {"id":mission}
-    response = session.post('https://api.tapswap.ai/api/missions/join_mission', headers=headers, json=payload).json()
+    response = requests.post('https://api.tapswap.ai/api/missions/join_mission', headers=headers, json=payload).json()
     return response
 
 def finish_mission(mission:str, auth:str):
@@ -219,7 +207,7 @@ def finish_mission(mission:str, auth:str):
     }
     
     payload = {"id":mission}
-    response = session.post('https://api.tapswap.ai/api/missions/finish_mission', headers=headers, json=payload).json()
+    response = requests.post('https://api.tapswap.ai/api/missions/finish_mission', headers=headers, json=payload).json()
     return response
 
 def finish_mission_item(mission:str, item:int, auth:str):
@@ -236,7 +224,7 @@ def finish_mission_item(mission:str, item:int, auth:str):
     }
     
     payload = {"id":mission,"item":item}
-    response = session.post('https://api.tapswap.ai/api/missions/finish_mission_item', headers=headers, json=payload).json()
+    response = requests.post('https://api.tapswap.ai/api/missions/finish_mission_item', headers=headers, json=payload).json()
     return response
 
 def claim_reward(auth:str, mission_id:str):
@@ -253,7 +241,7 @@ def claim_reward(auth:str, mission_id:str):
     }
     
     payload = {"id":mission_id}
-    response = session.post('https://api.tapswap.ai/api/missions/claim_mission_reward', headers=headers, json=payload).json()
+    response = requests.post('https://api.tapswap.ai/api/missions/claim_mission_reward', headers=headers, json=payload).json()
     return response
 
 def check_update(response, auth: str):
@@ -284,7 +272,7 @@ def upgrade(auth:str, type_:str):
     }
     
     payload = {"type":type_}
-    response = session.post('https://api.tapswap.ai/api/player/upgrade', headers=headers, json=payload).json()
+    response = requests.post('https://api.tapswap.ai/api/player/upgrade', headers=headers, json=payload).json()
     return response
 
 def submitTaps(auth:str, url:str):
@@ -326,9 +314,11 @@ async def admin_handler(event):
         db['click'] = 'on'
         await event.reply("Client is running.")
     elif text == "/main":
-        await event.reply(getUrlsync().url)
+        url = await getUrl()
+        await event.reply(url.url)
     elif text == "/auth":
-        await event.reply("Auth token is: " + authToken(getUrlsync().url))
+        url = await getUrl()
+        await event.reply("Auth token is: " + authToken(url.url))
     elif text == "/status":
         elapsed_time = time.time() - START_TIME
         uptime = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
@@ -336,8 +326,9 @@ async def admin_handler(event):
         cpu = psutil.cpu_percent()
         await event.reply(f"Status Report:\nUptime: {uptime}\nMemory Usage: {memory}%\nCPU Usage: {cpu}%")
     elif text == "/upgrade":
-        response = json.loads(authToken(getUrlsync().url))
-        check_update(response, authToken(getUrlsync().url))
+        url = await getUrl()
+        response = json.loads(authToken(url.url))
+        check_update(response, authToken(url.url))
         await event.reply("Upgraded as per configuration.")
     elif text.startswith("/"):
         await event.reply("Unknown command.")
@@ -345,9 +336,9 @@ async def admin_handler(event):
 # Cron job to submit taps every 15 minutes
 @aiocron.crontab('*/15 * * * *')
 async def cron_taps():
-    url = getUrlsync().url
-    auth = authToken(url)
-    submitTaps(auth, url)
+    url = await getUrl()
+    auth = authToken(url.url)
+    submitTaps(auth, url.url)
 
 # Start the client and keep it running
 print("Bot is now running...")
