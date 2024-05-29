@@ -114,7 +114,11 @@ def x_cv_version(url):
 
     r = requests.get(url, headers=headers)
 
-    f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
+    try:
+        f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
+    except IndexError:
+        print("[!] Error: Couldn't find asset name")
+        return None
     
     try:
         r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
