@@ -126,7 +126,7 @@ def x_cv_version(url):
         print('[+] X-CV:  ', x_cv)
     except Exception as e:
         print("[!] Error in X-CV:  ", e)
-        x_cv = 1
+        x_cv = '1'
     return x_cv
 
 def authToken(url):
