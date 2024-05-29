@@ -2,7 +2,10 @@ import asyncio
 from telethon.sync import TelegramClient
 from telethon.sync import functions, types, events
 from threading import Thread
-
+import urllib
+import json
+import requests
+from threading import Thread
 import json, requests, urllib, time, aiocron, random, ssl, psutil
 
 import sys
@@ -138,8 +141,8 @@ def authToken(url):
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "x-cv": x_cv,
-        "X-App": "tapswap_server"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36",
+        "Added by u": "example_value"  # Custom header added by 'u'
     }
     payload = {
         "init_data": urllib.parse.unquote(url).split('tgWebAppData=')[1].split('&tgWebAppVersion')[0],
@@ -165,6 +168,7 @@ def authToken(url):
             print(e)
     
     return response['access_token']
+
 
 
 
