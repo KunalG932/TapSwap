@@ -109,8 +109,8 @@ def x_cv_version(url):
         x_cv = 1
     return x_cv
 
-def authToken(url):
-    global balance
+async def authToken(url):
+    global balance, x_cv  # Define x_cv as a global variable
     headers = {
         "accept": "/",
         "accept-language": "en-US,en;q=0.9,fa;q=0.8",
@@ -118,7 +118,7 @@ def authToken(url):
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "x-cv": x_cv,
+        "x-cv": x_cv,  # Use x_cv here
         "X-App": "tapswap_server"
     }
     payload = {
