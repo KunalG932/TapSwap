@@ -2,20 +2,20 @@ import asyncio
 from telethon.sync import TelegramClient
 from telethon.sync import functions, types, events
 from threading import Thread
+import json
+import requests
 import urllib
-import json
-import requests
-from threading import Thread
-import json, requests, urllib, time, aiocron, random, ssl, psutil
+import time
+import aiocron
+import random
+import ssl
+import psutil
+import sys
 import logging
-import requests
-import json
-import urllib.parse
-from threading import Thread
 
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-import sys
 
 # -----------
 
@@ -139,20 +139,8 @@ def x_cv_version(url):
         x_cv = 1
     return x_cv
 
-
-
-import logging
-import requests
-import json
-import urllib.parse
-from threading import Thread
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-def authToken(url, auto_upgrade=False):
+def authToken(url):
     global balance
-    
     headers = {
         "accept": "/",
         "accept-language": "en-US,en;q=0.9,fa;q=0.8",
@@ -163,39 +151,35 @@ def authToken(url, auto_upgrade=False):
         "x-cv": x_cv,
         "X-App": "tapswap_server"
     }
-    
     payload = {
         "init_data": urllib.parse.unquote(url).split('tgWebAppData=')[1].split('&tgWebAppVersion')[0],
-        "referrer": ""
+        "referrer":""
     }
-
-    try:
-        response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload), timeout=10).json()
-        
-        if 'player' in response and 'shares' in response['player']:
-            balance = response['player']['shares']
-        else:
-            logger.error("Response does not contain player shares information")
-            return None
-        
-    except requests.RequestException as e:
-        logger.error(f"Error in auth request: {e}")
-        return None
+    while True:
+        try:
+            response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload)).json()
+            balance = response.get('player', {}).get('shares', None)
+            if balance is None:
+                logger.error("Response does not contain player shares information")
+                logger.error(f"Response from server: {response}")
+                break
+            logger.info(f"Successfully retrieved balance: {balance}")
+            break
+        except Exception as e:
+            logger.error(f"Error in auth: {e}")
+            # time.sleep(3)
     
     if auto_upgrade:
         try:
             Thread(target=complete_missions, args=(response, response['access_token'],)).start()
-        except Exception as e:
-            logger.error(f"Error starting complete_missions thread: {e}")
-        
+        except:
+            pass
         try:
             check_update(response, response['access_token'])
         except Exception as e:
-            logger.error(f"Error checking update: {e}")
+            logger.error(e)
     
-    return response['access_token']
-
-
+    return response.get('access_token', None)
 
 def complete_missions(response, auth: str):
     missions = response['conf']['missions']
