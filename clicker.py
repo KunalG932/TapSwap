@@ -83,7 +83,7 @@ class BypassTLSv1_3(requests.adapters.HTTPAdapter):
 
 
 def getUrlsync():
-    return client(
+    response = client(
         functions.messages.RequestWebViewRequest(
             peer='tapswap_bot',
             bot='tapswap_bot',
@@ -92,6 +92,9 @@ def getUrlsync():
             url='https://app.tapswap.ai/',
         )
     )
+    print("getUrlsync response:", response)
+    return response
+
 
 async def getUrl():
     return await client(
@@ -109,15 +112,16 @@ def x_cv_version(url):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     }
 
-    s = requests.Session()
-    s.headers = headers
-
-    r = requests.get(url, headers=headers)
-
-    f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
-    
     try:
-        r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
+        s = requests.Session()
+        s.headers = headers
+
+        print("Fetching main page:", url)
+        r = s.get(url, headers=headers)
+        f_name = "main" + r.text.split('src="/assets/main')[1].split('"')[0]
+
+        print("Fetching asset:", f_name)
+        r = s.get(f'https://app.tapswap.club/assets/{f_name}')
         x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
         print('[+] X-CV:  ', x_cv)
     except Exception as e:
@@ -148,8 +152,8 @@ def authToken(url):
             break
         except Exception as e:
             print("[!] Error in auth:  ", e)
-            # time.sleep(3)
-    
+            time.sleep(3)
+
     if auto_upgrade:
         try:
             Thread(target=complete_missions, args=(response, response['access_token'],)).start()
@@ -159,8 +163,9 @@ def authToken(url):
             check_update(response, response['access_token'])
         except Exception as e:
             print(e)
-    
+
     return response['access_token']
+
 
 
 
