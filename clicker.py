@@ -7,7 +7,14 @@ import json
 import requests
 from threading import Thread
 import json, requests, urllib, time, aiocron, random, ssl, psutil
+import logging
+import requests
+import json
+import urllib.parse
+from threading import Thread
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 import sys
 
 # -----------
@@ -132,8 +139,11 @@ def x_cv_version(url):
         x_cv = 1
     return x_cv
 
-def authToken(url):
+
+
+def authToken(url, auto_upgrade=False):
     global balance
+    
     headers = {
         "accept": "/",
         "accept-language": "en-US,en;q=0.9,fa;q=0.8",
@@ -141,35 +151,34 @@ def authToken(url):
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36",
-        "Added by u": "example_value"  # Custom header added by 'u'
+        "x-cv": x_cv,
+        "X-App": "tapswap_server"
     }
+    
     payload = {
         "init_data": urllib.parse.unquote(url).split('tgWebAppData=')[1].split('&tgWebAppVersion')[0],
-        "referrer":""
+        "referrer": ""
     }
-    while True:
-        try:
-            response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload)).json()
-            balance = response['player']['shares']
-            break
-        except Exception as e:
-            print("[!] Error in auth:  ", e)
-            # time.sleep(3)
+
+    try:
+        response = requests.post('https://api.tapswap.ai/api/account/login', headers=headers, data=json.dumps(payload), timeout=10).json()
+        balance = response['player']['shares']
+    except requests.RequestException as e:
+        logger.error(f"Error in auth request: {e}")
+        return None
     
     if auto_upgrade:
         try:
             Thread(target=complete_missions, args=(response, response['access_token'],)).start()
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Error starting complete_missions thread: {e}")
+        
         try:
             check_update(response, response['access_token'])
         except Exception as e:
-            print(e)
+            logger.error(f"Error checking update: {e}")
     
     return response['access_token']
-
-
 
 
 def complete_missions(response, auth: str):
