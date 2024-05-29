@@ -318,7 +318,7 @@ async def admin_handler(event):
         await event.reply(url.url)
     elif text == "/auth":
         url = await getUrl()
-        await event.reply("Auth token is: " + authToken(url.url))
+        await event.reply("Auth token is: " + await authToken(url.url))
     elif text == "/status":
         elapsed_time = time.time() - START_TIME
         uptime = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
@@ -327,11 +327,17 @@ async def admin_handler(event):
         await event.reply(f"Status Report:\nUptime: {uptime}\nMemory Usage: {memory}%\nCPU Usage: {cpu}%")
     elif text == "/upgrade":
         url = await getUrl()
-        response = json.loads(authToken(url.url))
-        check_update(response, authToken(url.url))
+        response = json.loads(await authToken(url.url))
+        check_update(response, await authToken(url.url))
         await event.reply("Upgraded as per configuration.")
+    elif text == "/balance":
+        url = await getUrl()
+        response = json.loads(await authToken(url.url))
+        balance_info = f"Total Balance: {response['player']['shares']}\nEnergy Level: {response['player']['energy_level']}\nTap Level: {response['player']['tap_level']}\nCharge Level: {response['player']['charge_level']}"
+        await event.reply(balance_info)
     elif text.startswith("/"):
         await event.reply("Unknown command.")
+
 
 # Cron job to submit taps every 15 minutes
 @aiocron.crontab('*/15 * * * *')
