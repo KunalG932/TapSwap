@@ -7,16 +7,17 @@ import json, requests, urllib, time, aiocron, random, ssl, psutil
 
 import sys
 
-with open('config.json', 'r') as f:
-    data = json.load(f)
+# -----------
 
-api_id = data.get('api_id')
-api_hash = data.get('api_hash')
-admin = data.get('admin')
-auto_upgrade = data.get('auto_upgrade')
-max_charge_level = data.get('max_charge_level')
-max_energy_level = data.get('max_energy_level')
-max_tap_level = data.get('max_tap_level')
+with open('config.json') as f:
+    data = json.load(f)
+    api_id = data['api_id']
+    api_hash = data['api_hash']
+    admin = data['admin']
+    auto_upgrade = data['auto_upgrade']
+    max_charge_level = data['max_charge_level']
+    max_energy_level = data['max_energy_level']
+    max_tap_level = data['max_tap_level']
 
 
 db = {
@@ -113,16 +114,16 @@ def x_cv_version(url):
 
     r = requests.get(url, headers=headers)
 
+    f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
+    
     try:
-        f_name = "main"+r.text.split('src="/assets/main')[1].split('"')[0]
-        print('[DEBUG] f_name:', f_name)
+        r = requests.get(f'https://app.tapswap.club/assets/{f_name}')
         x_cv = r.text.split('api.headers.set("x-cv","')[1].split('"')[0]
-        print('[+] X-CV:', x_cv)
+        print('[+] X-CV:  ', x_cv)
     except Exception as e:
-        print("[!] Error in X-CV:", e)
-        x_cv = "1"
+        print("[!] Error in X-CV:  ", e)
+        x_cv = 1
     return x_cv
-
 
 def authToken(url):
     global balance
@@ -438,11 +439,11 @@ async def answer(event):
         _sendMessage = event.reply
     
     if text == '/ping':
-        await _sendMessage('👽 Pong!')
+        await _sendMessage('👽')
     
     elif text.startswith('/click '):
         stats = text.split('/click ')[1]
-        if stats not in ['off', 'on']:
+        if not stats in ['off', 'on']:
             await _sendMessage('❌ Bad Command!')
             return
         
@@ -450,24 +451,22 @@ async def answer(event):
         if stats == 'on':
             await _sendMessage('✅ Mining Started!')
         else:
-            await _sendMessage('💤 Mining Turned Off!')
+            await _sendMessage('💤 Mining turned off!')
     
     elif text == '/balance':
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
-        await _sendMessage(f'🟣 **Balance:** {balance}\n\n💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`')
+        await _sendMessage(f'🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`')
     
     elif text == '/url':
-        await _sendMessage(f"💡 **WebApp URL:** `{url}`")
+        await _sendMessage(f"💡 WebApp Url: `{url}`")
     
     elif text == '/stats':
         stats = tap_stats(auth)
         total_share_balance = stats['players']['earned'] - stats['players']['spent'] + stats['players']['reward']
-        await _sendMessage(f"""⚡️ **TAPSWAP STATS** ⚡️
-        
-💡 **Total Share Balance:** `{convert_big_number(total_share_balance)}`
-👆🏻 **Total Touches:** `{convert_big_number(stats['players']['taps'])}`
-💀 **Total Players:** `{convert_big_number(stats['accounts']['total'])}`
-☠️ **Online Players:** `{convert_big_number(stats['accounts']['online'])}`""")
+        await _sendMessage(f"""`⚡️ TAPSWAP ⚡️`\n\n💡 Total Share Balance: `{convert_big_number(total_share_balance)}`
+👆🏻 Total Touches: `{convert_big_number(stats['players']['taps'])}`
+💀 Total Players: `{convert_big_number(stats['accounts']['total'])}`
+☠️ Online Players: `{convert_big_number(stats['accounts']['online'])}`""")
     
     elif text == '/help':
         su = get_server_usage()
@@ -481,54 +480,31 @@ async def answer(event):
         _hours2, _minutes2 = convert_uptime(nextMineTime - time.time())
         _clicker_stats = "ON 🟢" if db['click'] == 'on' else "OFF 🔴"
         await _sendMessage(f"""
-💻 **Author:** `Likhon Sheikh`
-📊 **Clicker Stats:** `{_clicker_stats}`
-⏳ **Uptime:** `{_hours} hours and {_minutes} minutes`
-💡 **Next Tap in:** `{_hours2} hours and {_minutes2} minutes`
-🎛 **CPU Usage:** `{cpu_percent:.2f}%`
-🎚 **Memory Usage:** `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
+💻 Author: `Likhon Sheikh`
+📊 Clicker stats: `{_clicker_stats}`
+⏳ Uptime: `{_hours} hours and {_minutes} minutes`
+💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes`
+🎛 CPU usage: `{cpu_percent:.2f}%`
+🎚 Memory usage: `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
 
-**Commands:**
+To start Tapping , you can use the following commands:
 
 🟣 `/click on` - Start collecting TapSwaps
 🟣 `/click off` - Stop collecting TapSwaps
 🟣 `/ping` - Check if the robot is online
 🟣 `/help` - Display help menu
-🟣 `/balance` - Check your balance
+🟣 Balance: {balance}\n\n💡 Next Tap in: `{_hours2} hours and {_minutes2} minutes
 🟣 `/stop` - Stop the robot
-🟣 `/url` - Get WebApp URL
-🟣 `/time` - Get the current server time
-🟣 `/status` - Get detailed system status
+🟣 `/url` - WebApp Url
 
-**Coded By:** @UnPuzzles | **Telegram:** [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
-        """)
+
+Coded By: @UnPuzzles | Telegram: [Telegram](https://t.me/+n-rBlRjOBpw3ODQ1)
+
+                          """)
+        
     
     elif text == '/version':
-        await _sendMessage(f"ℹ️ **Version:** {VERSION}\n\n**Coded By:** @uPaSKaL | **GitHub:** [Poryaei](https://github.com/Poryaei)")
-
-    elif text == '/time':
-        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-        await _sendMessage(f"🕒 **Current Server Time:** `{current_time} UTC`")
-    
-    elif text == '/status':
-        su = get_server_usage()
-        mem_usage = su['memory_usage_MB']
-        mem_total = su['memory_total_MB']
-        mem_percent = su['memory_percent']
-        cpu_percent = su['cpu_percent']
-        
-        disk_usage = su.get('disk_usage', 'N/A')
-        network_status = su.get('network_status', 'N/A')
-        
-        await _sendMessage(f"""
-📊 **System Status**
-
-🎛 **CPU Usage:** `{cpu_percent:.2f}%`
-🎚 **Memory Usage:** `{mem_usage:.2f}/{mem_total:.2f} MB ({mem_percent:.2f}%)`
-💽 **Disk Usage:** `{disk_usage}`
-🌐 **Network Status:** `{network_status}`
-        """)
-
+        await _sendMessage(f"ℹ️ Version: {VERSION}\n\nCoded By: @uPaSKaL | GitHub: [Poryaei](https://github.com/Poryaei)")
     
 
 # ---------------
